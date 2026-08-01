@@ -1,0 +1,46 @@
+name: Check Packages
+
+on:
+  pull_request:
+    paths:
+      - '*/build'
+      - '*/version'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck tar zstd
+      
+      - name: Find changed packages
+        id: packages
+        run: |
+          changed=$(git diff --name-only origin/main...HEAD | grep '/build$' | cut -d'/' -f1 | sort -u)
+          echo "pkgs=$changed" >> $GITHUB_OUTPUT
+      
+      - name: Run shellcheck
+        run: |
+          for pkg in ${{ steps.packages.outputs.pkgs }}; do
+            echo "Checking $pkg/build"
+            shellcheck -s sh "$pkg/build"
+          done
+      
+      - name: Check for dangerous patterns
+        run: |
+          for pkg in ${{ steps.packages.outputs.pkgs }}; do
+            if grep -E 'rm -rf /|curl.*\|' "$pkg/build"; then
+              echo "Dangerous pattern found in $pkg/build"
+              exit 1
+            fi
+          done
+      
+      - name: Verify version file exists
+        run: |
+          for pkg in ${{ steps.packages.outputs.pkgs }}; do
+            [ -f "$pkg/version" ] || { echo "Missing $pkg/version"; exit 1; }
+          done

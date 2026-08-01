@@ -1,0 +1,7 @@
+#!/bin/sh
+mkdir -p "$1/usr/bin"
+cat > "$1/usr/bin/hello-foid" << 'BIN'
+#!/bin/sh
+echo "Hello from FOID Linux!"
+BIN
+chmod +x "$1/usr/bin/hello-foid"
